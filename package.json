@@ -1,0 +1,77 @@
+{
+    "name": "pastevector",
+    "displayName": "pasteVector (Linux/WSL)",
+    "description": "Paste vector clipboard (SVG/EMF/PDF) into Markdown by writing an SVG file and inserting ![](...).",
+    "version": "0.1.1",
+    "publisher": "local",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gpbraun/pastevector"
+    },
+    "homepage": "https://github.com/gobraun/pastevector#readme",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "main": "./out/extension.js",
+    "extensionKind": [
+        "workspace"
+    ],
+    "contributes": {
+        "commands": [
+            {
+                "command": "pasteVector.pasteVector",
+                "title": "pasteVector: Paste Vector → SVG (Markdown)"
+            },
+            {
+                "command": "pasteVector.showClipboardTypes",
+                "title": "pasteVector: Show Clipboard Types (Debug)"
+            }
+        ],
+        "keybindings": [
+            {
+                "key": "ctrl+alt+v",
+                "command": "pasteVector.pasteVector",
+                "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+            }
+        ],
+        "configuration": {
+            "title": "pasteVector",
+            "properties": {
+                "pasteVector.destinationTemplate": {
+                    "type": "string",
+                    "default": "img_${documentBaseName}_${unixTime}.${fileExtName}",
+                    "description": "Output path template relative to the current document directory."
+                },
+                "pasteVector.preferBackend": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "wayland",
+                        "x11"
+                    ],
+                    "default": "auto",
+                    "description": "Clipboard backend selection. auto=Wayland if available else X11."
+                },
+                "pasteVector.altText": {
+                    "type": "string",
+                    "default": "",
+                    "description": "If non-empty, inserts ![alt](...). If empty, inserts ![](...)."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "compile": "tsc -p .",
+        "watch": "tsc -w -p .",
+        "vscode:prepublish": "npm run compile"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/vscode": "^1.80.0",
+        "@vscode/vsce": "^3.7.1",
+        "typescript": "^5.0.0"
+    }
+}
