@@ -1,77 +1,117 @@
 {
-    "name": "pastevector",
-    "displayName": "pasteVector (Linux/WSL)",
-    "description": "Paste vector clipboard (SVG/EMF/PDF) into Markdown by writing an SVG file and inserting ![](...).",
-    "version": "0.1.1",
-    "publisher": "local",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/gpbraun/pastevector"
-    },
-    "homepage": "https://github.com/gobraun/pastevector#readme",
-    "engines": {
-        "vscode": "^1.80.0"
-    },
-    "categories": [
-        "Other"
+  "name": "pastevector",
+  "displayName": "pasteVector",
+  "description": "Paste ChemDraw and other clipboard vector content into Markdown by writing SVG or PNG files and inserting Markdown image links.",
+  "version": "0.2.0",
+  "publisher": "local",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gpbraun/pastevector"
+  },
+  "homepage": "https://github.com/gpbraun/pastevector#readme",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "clipboard",
+    "svg",
+    "vector",
+    "chemdraw",
+    "inkscape",
+    "wsl"
+  ],
+  "main": "./out/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "pasteVector.pasteVector",
+        "title": "pasteVector: Paste Vector"
+      },
+      {
+        "command": "pasteVector.showClipboardTypes",
+        "title": "pasteVector: Show Clipboard Types"
+      }
     ],
-    "main": "./out/extension.js",
-    "extensionKind": [
-        "workspace"
+    "keybindings": [
+      {
+        "key": "ctrl+alt+v",
+        "command": "pasteVector.pasteVector",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      }
     ],
-    "contributes": {
-        "commands": [
-            {
-                "command": "pasteVector.pasteVector",
-                "title": "pasteVector: Paste Vector → SVG (Markdown)"
-            },
-            {
-                "command": "pasteVector.showClipboardTypes",
-                "title": "pasteVector: Show Clipboard Types (Debug)"
-            }
-        ],
-        "keybindings": [
-            {
-                "key": "ctrl+alt+v",
-                "command": "pasteVector.pasteVector",
-                "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
-            }
-        ],
-        "configuration": {
-            "title": "pasteVector",
-            "properties": {
-                "pasteVector.destinationTemplate": {
-                    "type": "string",
-                    "default": "img_${documentBaseName}_${unixTime}.${fileExtName}",
-                    "description": "Output path template relative to the current document directory."
-                },
-                "pasteVector.preferBackend": {
-                    "type": "string",
-                    "enum": [
-                        "auto",
-                        "wayland",
-                        "x11"
-                    ],
-                    "default": "auto",
-                    "description": "Clipboard backend selection. auto=Wayland if available else X11."
-                },
-                "pasteVector.altText": {
-                    "type": "string",
-                    "default": "",
-                    "description": "If non-empty, inserts ![alt](...). If empty, inserts ![](...)."
-                }
-            }
+    "configuration": {
+      "title": "pasteVector",
+      "properties": {
+        "pasteVector.destinationTemplate": {
+          "type": "string",
+          "default": "img_${documentBaseName}_${unixTime}.${fileExtName}",
+          "description": "Output path template, relative to the current document directory."
+        },
+        "pasteVector.preferBackend": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "wayland",
+            "x11"
+          ],
+          "default": "auto",
+          "description": "Linux clipboard backend selection. auto prefers Wayland when available, otherwise X11."
+        },
+        "pasteVector.altText": {
+          "type": "string",
+          "default": "",
+          "description": "Alt text used when inserting the Markdown image."
+        },
+        "pasteVector.showLog": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the pasteVector output channel while the command runs."
+        },
+        "pasteVector.copyMarkdownToClipboard": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also copy the inserted Markdown image link to the VS Code clipboard."
+        },
+        "pasteVector.preferPowerPointNormalize": {
+          "type": "boolean",
+          "default": true,
+          "description": "In WSL, prefer hidden PowerPoint normalization for Windows clipboard vector content before SVG export."
+        },
+        "pasteVector.finalizeSvgWithInkscape": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run Inkscape on generated SVGs to fit the canvas, convert text to paths, and save as plain SVG."
+        },
+        "pasteVector.atomLabelFontSizePt": {
+          "type": "number",
+          "default": 9,
+          "description": "Target font size (in pt) for atom labels in ChemDraw EMF drawings. Used to scale the SVG so that the largest atom label font renders at this size."
         }
-    },
-    "scripts": {
-        "compile": "tsc -p .",
-        "watch": "tsc -w -p .",
-        "vscode:prepublish": "npm run compile"
-    },
-    "devDependencies": {
-        "@types/node": "^20.0.0",
-        "@types/vscode": "^1.80.0",
-        "@vscode/vsce": "^3.7.1",
-        "typescript": "^5.0.0"
+      }
     }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "vscode:prepublish": "npm run compile"
+  },
+  "files": [
+    "out/**/*",
+    "package.json",
+    "README.md",
+    "LICENSE.txt"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.7.1",
+    "typescript": "^5.0.0"
+  }
 }
