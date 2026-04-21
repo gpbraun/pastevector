@@ -79,25 +79,50 @@
           "default": false,
           "description": "Also copy the inserted Markdown image link to the VS Code clipboard."
         },
-        "pasteVector.preferPowerPointNormalize": {
-          "type": "boolean",
-          "default": true,
-          "description": "In WSL, prefer hidden PowerPoint normalization for Windows clipboard vector content before SVG export."
-        },
         "pasteVector.finalizeSvgWithInkscape": {
           "type": "boolean",
           "default": true,
-          "description": "Run Inkscape on generated SVGs to fit the canvas, convert text to paths, and save as plain SVG."
+          "description": "Run Inkscape on pasted SVG text to fit the canvas and save as plain SVG. Does not affect EMF conversion (use pasteVector.fitSvgPageWithInkscape for that)."
+        },
+        "pasteVector.windowsDisplayScalePercent": {
+          "type": "number",
+          "default": 125,
+          "description": "Windows display scale percentage (e.g. 125 for 125%). After EMF→SVG conversion the root SVG size is multiplied by 100/windowsDisplayScalePercent. Set to 100 to disable correction."
+        },
+        "pasteVector.fitSvgPageWithInkscape": {
+          "type": "boolean",
+          "default": true,
+          "description": "After emf2svg-conv conversion, run a single Inkscape pass to fit the page canvas to the drawing. Has no effect if Inkscape is not in PATH or if emfConverter is set to inkscape."
+        },
+        "pasteVector.showBackendDiagnostics": {
+          "type": "boolean",
+          "default": false,
+          "description": "Log scale percent, computed factor, fit step result, and backend stderr to the pasteVector output channel for debugging EMF conversion."
         },
         "pasteVector.atomLabelFontSizePt": {
           "type": "number",
           "default": 9,
-          "description": "Target font size (in pt) for atom labels in ChemDraw EMF drawings. Used to scale the SVG so that the largest atom label font renders at this size."
+          "description": "(Deprecated, no longer used.) Target font size in pt for atom labels in ChemDraw EMF drawings."
         },
         "pasteVector.bondLengthPt": {
           "type": "number",
           "default": 14.4,
-          "description": "Target bond length (in pt) for label-free ChemDraw EMF drawings. Used to scale the SVG when no atom labels are present. The ChemDraw default bond length is 14.4 pt."
+          "description": "(Deprecated, no longer used.) Target bond length in pt for label-free ChemDraw EMF drawings."
+        },
+        "pasteVector.usePowerPointForEmf": {
+          "type": "boolean",
+          "default": true,
+          "description": "(Deprecated, no longer used.) Previously enabled PowerPoint COM automation for EMF conversion."
+        },
+        "pasteVector.inkscapeEmfScaleFactor": {
+          "type": "number",
+          "default": 1.0,
+          "description": "(Deprecated, use pasteVector.windowsDisplayScalePercent instead.) Multiplicative scale factor applied after Inkscape EMF conversion."
+        },
+        "pasteVector.powerPointTimeoutMs": {
+          "type": "number",
+          "default": 30000,
+          "description": "(Deprecated, no longer used.) Timeout for the PowerPoint COM automation script."
         }
       }
     }
@@ -105,7 +130,8 @@
   "scripts": {
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "test": "jest"
   },
   "files": [
     "out/**/*",
@@ -114,9 +140,12 @@
     "LICENSE.txt"
   ],
   "devDependencies": {
+    "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.80.0",
     "@vscode/vsce": "^3.7.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.0.0"
   }
 }
