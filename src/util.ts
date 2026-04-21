@@ -30,8 +30,6 @@ export async function statSafe(p: string): Promise<{ exists: boolean; size: numb
 export async function writeBytes(outAbs: string, bytes: Buffer): Promise<void> {
   await ensureDir(path.dirname(outAbs));
   await fs.writeFile(outAbs, bytes);
-  const st = await statSafe(outAbs);
-  if (!st.exists || st.size === 0) throw new Error("Output file missing or empty after write.");
 }
 
 // ── Process helpers ───────────────────────────────────────────────────────────

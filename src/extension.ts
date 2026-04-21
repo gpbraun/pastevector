@@ -60,7 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const finalizeSvg             = cfg.get<boolean>("pasteVector.finalizeSvgWithInkscape", true);
     const windowsDisplayScalePercent = cfg.get<number>("pasteVector.windowsDisplayScalePercent", 125);
     const fitSvgPageWithInkscape  = cfg.get<boolean>("pasteVector.fitSvgPageWithInkscape", true);
-
+    const copyMd                  = copyMdToClipboard && !isWSL();
     const docPath  = editor.document.uri.fsPath;
     const docDir   = path.dirname(docPath);
     const docBase  = path.basename(docPath, path.extname(docPath));
@@ -83,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const outSvgAbs = makeOutAbs("svg");
         await writeSvgText(outSvgAbs, t);
         if (finalizeSvg) await finalizeSvgWithInkscape(outSvgAbs);
-        const rel = await insertMarkdown(editor, docDir, outSvgAbs, altText, copyMdToClipboard && !isWSL());
+        const rel = await insertMarkdown(editor, docDir, outSvgAbs, altText, copyMd);
         log(`ok handler=svg-text -> ${rel}`);
         return;
       } catch (e: any) {
@@ -105,7 +105,7 @@ export async function activate(context: vscode.ExtensionContext) {
         log,
       );
       if (wslRes) {
-        const rel = await insertMarkdown(editor, docDir, wslRes.outAbs, altText, copyMdToClipboard && !isWSL());
+        const rel = await insertMarkdown(editor, docDir, wslRes.outAbs, altText, copyMd);
         log(`ok handler=${wslRes.handler} type=${wslRes.usedType} -> ${rel}`);
         return;
       }
@@ -117,7 +117,7 @@ export async function activate(context: vscode.ExtensionContext) {
     try {
       const linuxRes = await tryLinuxClipboard(preferBackend, makeOutAbs, finalizeSvg);
       if (linuxRes) {
-        const rel = await insertMarkdown(editor, docDir, linuxRes.outAbs, altText, copyMdToClipboard && !isWSL());
+        const rel = await insertMarkdown(editor, docDir, linuxRes.outAbs, altText, copyMd);
         log(`ok handler=${linuxRes.handler} type=${linuxRes.usedType} -> ${rel}`);
         return;
       }

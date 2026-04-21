@@ -92,37 +92,7 @@
         "pasteVector.fitSvgPageWithInkscape": {
           "type": "boolean",
           "default": true,
-          "description": "After emf2svg-conv conversion, run a single Inkscape pass to fit the page canvas to the drawing. Has no effect if Inkscape is not in PATH or if emfConverter is set to inkscape."
-        },
-        "pasteVector.showBackendDiagnostics": {
-          "type": "boolean",
-          "default": false,
-          "description": "Log scale percent, computed factor, fit step result, and backend stderr to the pasteVector output channel for debugging EMF conversion."
-        },
-        "pasteVector.atomLabelFontSizePt": {
-          "type": "number",
-          "default": 9,
-          "description": "(Deprecated, no longer used.) Target font size in pt for atom labels in ChemDraw EMF drawings."
-        },
-        "pasteVector.bondLengthPt": {
-          "type": "number",
-          "default": 14.4,
-          "description": "(Deprecated, no longer used.) Target bond length in pt for label-free ChemDraw EMF drawings."
-        },
-        "pasteVector.usePowerPointForEmf": {
-          "type": "boolean",
-          "default": true,
-          "description": "(Deprecated, no longer used.) Previously enabled PowerPoint COM automation for EMF conversion."
-        },
-        "pasteVector.inkscapeEmfScaleFactor": {
-          "type": "number",
-          "default": 1.0,
-          "description": "(Deprecated, use pasteVector.windowsDisplayScalePercent instead.) Multiplicative scale factor applied after Inkscape EMF conversion."
-        },
-        "pasteVector.powerPointTimeoutMs": {
-          "type": "number",
-          "default": 30000,
-          "description": "(Deprecated, no longer used.) Timeout for the PowerPoint COM automation script."
+          "description": "After emf2svg-conv conversion, run a single Inkscape pass to fit the page canvas to the drawing. Has no effect if Inkscape is not in PATH."
         }
       }
     }

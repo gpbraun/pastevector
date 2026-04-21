@@ -8,7 +8,6 @@ import {
   nonce, ensureDir, removeIfExists, statSafe, writeBytes,
   commandExists, runText, runBin,
   isWSL, wslpathWin, psEscapeSingleQuoted,
-  T_CONVERT_MS,
 } from "./util";
 import { finalizeSvgWithInkscape } from "./svg";
 import { convertEmfToSvg } from "./emf";
@@ -299,12 +298,15 @@ export async function tryWslWindowsClipboard(
   }
 
   if (kind === "emf") {
-    await convertEmfToSvg(
-      tmpEmfAbs, outSvgAbs,
-      config.windowsDisplayScalePercent, config.fitSvgPageWithInkscape,
-      log,
-    );
-    await removeIfExists(tmpEmfAbs);
+    try {
+      await convertEmfToSvg(
+        tmpEmfAbs, outSvgAbs,
+        config.windowsDisplayScalePercent, config.fitSvgPageWithInkscape,
+        log,
+      );
+    } finally {
+      await removeIfExists(tmpEmfAbs);
+    }
     return { outAbs: outSvgAbs, handler: "wsl-emf", usedType: "windows/emf" };
   }
 
