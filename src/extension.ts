@@ -209,7 +209,7 @@ async function maybeGunzip(buf: Buffer): Promise<Buffer> {
 }
 
 function readEmfFrameMm(buf: Buffer): {
-  w: number; h: number; physDpi: number;
+  w: number; h: number;
   boundsVu: { w: number; h: number };
 } | null {
   if (buf.length < 40) return null;
@@ -232,14 +232,43 @@ function readEmfFrameMm(buf: Buffer): {
     w: bW > 0 ? bW * scale96 : frameW * 0.01 * 96 / 25.4,
     h: bH > 0 ? bH * scale96 : frameH * 0.01 * 96 / 25.4,
   };
-  return { w: frameW * 0.01, h: frameH * 0.01, physDpi, boundsVu };
+  return { w: frameW * 0.01, h: frameH * 0.01, boundsVu };
+}
+
+function extractModalBondVu(svg: string): number {
+  const lengths: number[] = [];
+  for (const m of svg.matchAll(/\bd="([^"]+)"/g)) {
+    const d = m[1].trim();
+    const num = "([-\\d.e]+)";
+    const sep = "[,\\s]+";
+    let mm: RegExpMatchArray | null;
+    // M x,y x2,y2  (implicit LineTo)
+    mm = d.match(new RegExp(`^M${sep}${num}${sep}${num}${sep}${num}${sep}${num}\\s*$`));
+    if (mm) { lengths.push(Math.hypot(+mm[3] - +mm[1], +mm[4] - +mm[2])); continue; }
+    // M x,y V y2
+    mm = d.match(new RegExp(`^M${sep}${num}${sep}${num}${sep}V${sep}${num}\\s*$`));
+    if (mm) { lengths.push(Math.abs(+mm[3] - +mm[2])); continue; }
+    // M x,y H x2
+    mm = d.match(new RegExp(`^M${sep}${num}${sep}${num}${sep}H${sep}${num}\\s*$`));
+    if (mm) { lengths.push(Math.abs(+mm[3] - +mm[1])); }
+  }
+  const candidates = lengths.filter(l => l > 1);
+  if (candidates.length === 0) return 0;
+  // Find the most common length using 0.1 vu buckets
+  const buckets = new Map<number, number>();
+  for (const l of candidates) {
+    const key = Math.round(l * 10) / 10;
+    buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+  const modalKey = [...buckets.entries()].reduce((a, b) =>
+    b[1] > a[1] || (b[1] === a[1] && b[0] > a[0]) ? b : a)[0];
+  const cluster = candidates.filter(l => Math.abs(Math.round(l * 10) / 10 - modalKey) < 1e-9);
+  return cluster.reduce((a, b) => a + b, 0) / cluster.length;
 }
 
 async function applySvgGeometry(
   svgPath: string,
-  frameMm: { w: number; h: number },
-  physDpi: number,
-  boundsVu: { w: number; h: number }
+  frameMm: { w: number; h: number }
 ): Promise<void> {
   const targetFontPt = vscode.workspace.getConfiguration().get<number>("pasteVector.atomLabelFontSizePt", 9);
   let svg = await fs.readFile(svgPath, "utf8");
@@ -247,67 +276,59 @@ async function applySvgGeometry(
   const fontSizes = [...svg.matchAll(/font-size:([\d.]+)px/g)].map(m => parseFloat(m[1]));
   const fontPx = fontSizes.length > 0 ? Math.max(...fontSizes) : 0;
 
-  // Round/square linecaps extend stroke-width/2 beyond the geometric path endpoint.
-  // Add this as padding so caps are never clipped.
-  const strokeWidths = [...svg.matchAll(/stroke-width:([\d.]+)/g)].map(m => parseFloat(m[1]));
-  const hasRoundOrSquareCap = /stroke-linecap:(?:round|square)/.test(svg);
-  const sPad = (hasRoundOrSquareCap && strokeWidths.length > 0)
-    ? Math.max(...strokeWidths) / 2
-    : 0;
-
-  // Ask Inkscape for the tight geometric bounding box (in SVG user units for no-viewBox SVG)
-  let qx = 0, qy = 0, qw = 0, qh = 0;
-  try {
-    const qr = await runText("inkscape", [
-      "--query-x", "--query-y", "--query-width", "--query-height", svgPath
-    ], 10000);
-    const parts = qr.stdout.trim().split("\n").map(s => parseFloat(s.trim()));
-    if (parts.length === 4 && parts.every(n => !isNaN(n)) && parts[2] > 0 && parts[3] > 0) {
-      [qx, qy, qw, qh] = parts;
+  // Read viewBox set by Inkscape's page-fit-to-selection (visual bbox including stroke)
+  let viewW = 0, viewH = 0;
+  let needInsertViewBox = false;
+  const vbMatch = svg.match(/viewBox="([\d.\s-]+)"/);
+  if (vbMatch) {
+    const parts = vbMatch[1].trim().split(/\s+/).map(Number);
+    if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+      viewW = parts[2]; viewH = parts[3];
     }
-  } catch { /* fall through to formula fallback */ }
-
-  let viewX: number, viewY: number, viewW: number, viewH: number;
-  let physW: number, physH: number;
-
-  if (qw > 0 && qh > 0) {
-    // Tight visual bbox = Inkscape geometric bbox + stroke-cap padding on all sides
-    viewX = qx - sPad; viewY = qy - sPad;
-    viewW = qw + 2 * sPad; viewH = qh + 2 * sPad;
-
-    if (fontPx > 0) {
-      // Scale so the largest atom label renders at exactly targetFontPt
-      physW = targetFontPt * viewW * 25.4 / (72 * fontPx);
-      physH = physW * viewH / viewW;
-    } else if (boundsVu.w > 0) {
-      // No text labels: maintain rclBounds scale for monitor-independent bond lengths
-      physW = frameMm.w * viewW / boundsVu.w;
-      physH = frameMm.h * viewH / boundsVu.h;
-    } else {
-      physW = viewW * 25.4 / 96;
-      physH = viewH * 25.4 / 96;
-    }
-  } else {
-    // Fallback when query fails entirely
-    const logDpi = [96, 120, 144, 168, 192].reduce((b, v) =>
-      Math.abs(v - physDpi) < Math.abs(b - physDpi) ? v : b);
-    const fW = fontPx > 0
-      ? fontPx * frameMm.w * 72 / (targetFontPt * 25.4)
-      : frameMm.w * logDpi * 96 / (physDpi * 25.4);
-    viewX = -sPad; viewY = -sPad;
-    viewW = fW + 2 * sPad; viewH = fW * frameMm.h / frameMm.w + 2 * sPad;
-    physW = frameMm.w; physH = frameMm.h;
   }
 
-  const vb = `viewBox="${viewX.toFixed(4)} ${viewY.toFixed(4)} ${viewW.toFixed(4)} ${viewH.toFixed(4)}"`;
+  // When Inkscape omits viewBox (common for fresh EMF imports), derive it from the
+  // width/height Inkscape set (1 SVG user unit = 25.4/96 mm at default 96 dpi scale).
+  // We then insert a viewBox so that our physW/H replacement actually scales content.
+  if (viewW <= 0 || viewH <= 0) {
+    const wMatch = svg.match(/(<svg\b[^>]*[\s])width="([\d.]+)mm"/);
+    const hMatch = svg.match(/(<svg\b[^>]*[\s])height="([\d.]+)mm"/);
+    if (wMatch && hMatch) {
+      viewW = parseFloat(wMatch[2]) * 96 / 25.4;
+      viewH = parseFloat(hMatch[2]) * 96 / 25.4;
+      needInsertViewBox = true;
+    }
+  }
+
+  if (viewW <= 0 || viewH <= 0) return;
+
+  const cfg = vscode.workspace.getConfiguration();
+  const targetBondPt = cfg.get<number>("pasteVector.bondLengthPt", 14.4);
+
+  let physW: number, physH: number;
+  if (fontPx > 0) {
+    // Scale so the largest atom label renders at exactly targetFontPt
+    physW = targetFontPt * viewW * 25.4 / (72 * fontPx);
+    physH = physW * viewH / viewW;
+  } else {
+    // No text labels: scale from modal bond length so bonds render at targetBondPt
+    const bondVu = extractModalBondVu(svg);
+    if (bondVu > 0) {
+      physW = targetBondPt * 25.4 / 72 * viewW / bondVu;
+      physH = physW * viewH / viewW;
+    } else {
+      // Fallback: use ChemDraw frame size directly
+      physW = frameMm.w;
+      physH = frameMm.h;
+    }
+  }
+
+  if (needInsertViewBox) {
+    svg = svg.replace(/(<svg\b[^>]*)(\/?>)/, `$1 viewBox="0 0 ${viewW.toFixed(4)} ${viewH.toFixed(4)}"$2`);
+  }
   svg = svg
     .replace(/(<svg\b[^>]*[\s])width="[^"]*"/,  `$1width="${physW.toFixed(4)}mm"`)
     .replace(/(<svg\b[^>]*[\s])height="[^"]*"/, `$1height="${physH.toFixed(4)}mm"`);
-  if (/viewBox="[^"]*"/.test(svg)) {
-    svg = svg.replace(/viewBox="[^"]*"/, vb);
-  } else {
-    svg = svg.replace(/(<svg\b[^>]*)(\/?>)/, `$1 ${vb}$2`);
-  }
   await fs.writeFile(svgPath, svg, "utf8");
 }
 
@@ -317,13 +338,17 @@ async function emfPathToSvgViaInkscape(inEmfAbs: string, outSvgAbs: string) {
 
   const attempts: string[][] = [
     [
-      inEmfAbs,
       "--batch-process",
-      `--export-filename=${outSvgAbs}`,
-      "--export-type=svg",
-      "--export-plain-svg",
-      "--export-area-drawing",
-      "--vacuum-defs",
+      "--actions",
+      [
+        "select-all",
+        "page-fit-to-selection",
+        `export-filename:${outSvgAbs}`,
+        "export-type:svg",
+        "export-plain-svg",
+        "export-do",
+      ].join(";"),
+      inEmfAbs,
     ],
     [
       "--batch-process",
@@ -335,7 +360,6 @@ async function emfPathToSvgViaInkscape(inEmfAbs: string, outSvgAbs: string) {
         "export-type:svg",
         "export-plain-svg",
         "export-do",
-        "quit-immediate",
       ].join(";"),
       inEmfAbs,
     ],
@@ -349,7 +373,7 @@ async function emfPathToSvgViaInkscape(inEmfAbs: string, outSvgAbs: string) {
     if (st.exists && st.size > 0) {
       const emfBuf = await fs.readFile(inEmfAbs);
       const frame = readEmfFrameMm(emfBuf);
-      if (frame) await applySvgGeometry(outSvgAbs, frame, frame.physDpi, frame.boundsVu);
+      if (frame) await applySvgGeometry(outSvgAbs, frame);
 
       return;
     }

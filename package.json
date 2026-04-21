@@ -93,6 +93,11 @@
           "type": "number",
           "default": 9,
           "description": "Target font size (in pt) for atom labels in ChemDraw EMF drawings. Used to scale the SVG so that the largest atom label font renders at this size."
+        },
+        "pasteVector.bondLengthPt": {
+          "type": "number",
+          "default": 14.4,
+          "description": "Target bond length (in pt) for label-free ChemDraw EMF drawings. Used to scale the SVG when no atom labels are present. The ChemDraw default bond length is 14.4 pt."
         }
       }
     }
