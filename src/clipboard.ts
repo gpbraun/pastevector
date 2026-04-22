@@ -115,7 +115,7 @@ const LINUX_HANDLERS: LinuxHandler[] = [
     run: async (b, out) => {
       const cfg = vscode.workspace.getConfiguration();
       const scalePercent = cfg.get<number>("pasteVector.emfScalePercent", 125);
-      const fitPage      = cfg.get<boolean>("pasteVector.fitSvgPageWithInkscape", false);
+      const fitPage      = cfg.get<boolean>("pasteVector.finalizeEmfWithInkscape", true);
       const tmpEmf = path.join(os.tmpdir(), `pastevector_${nonce()}.emf`);
       await fs.writeFile(tmpEmf, b);
       try {
@@ -293,7 +293,7 @@ export async function listClipboardTypes(
 export async function planWslWindowsClipboard(
   makeOutAbs: (ext: string) => string,
   finalizeSvg: boolean,
-  config: { emfScalePercent: number; fitSvgPageWithInkscape: boolean },
+  config: { emfScalePercent: number; finalizeEmfWithInkscape: boolean },
   log: (msg: string) => void,
 ): Promise<ClipboardPlan | null> {
   if (!isWSL()) return null;
@@ -325,7 +325,7 @@ export async function planWslWindowsClipboard(
         try {
           await convertEmfToSvg(
             tmpEmfAbs, outSvgAbs,
-            config.emfScalePercent, config.fitSvgPageWithInkscape,
+            config.emfScalePercent, config.finalizeEmfWithInkscape,
             log,
           );
         } finally {

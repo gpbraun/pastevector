@@ -33,12 +33,12 @@ export async function scaleSvgRootDimensions(svgPath: string, factor: number): P
 
 // ── Inkscape helpers ──────────────────────────────────────────────────────────
 
-export async function fitSvgPageWithInkscape(
+export async function finalizeEmfWithInkscape(
   svgPath: string,
   log?: (msg: string) => void,
 ): Promise<void> {
   if (!commandExists("inkscape")) {
-    if (log) log("warn fitSvgPageWithInkscape: inkscape not in PATH, skipping");
+    if (log) log("warn finalizeEmfWithInkscape: inkscape not in PATH, skipping");
     return;
   }
 
@@ -66,10 +66,10 @@ export async function fitSvgPageWithInkscape(
       if (log && r.stderr?.trim()) log(`inkscape fit stderr: ${r.stderr.trim()}`);
     } else {
       const detail = [r.stderr?.trim(), r.stdout?.trim()].filter(Boolean).join(" | ");
-      if (log) log(`warn fitSvgPageWithInkscape: no output (${detail}), skipping`);
+      if (log) log(`warn finalizeEmfWithInkscape: no output (${detail}), skipping`);
     }
   } catch (e: any) {
-    if (log) log(`warn fitSvgPageWithInkscape: ${e?.message ?? String(e)}, skipping`);
+    if (log) log(`warn finalizeEmfWithInkscape: ${e?.message ?? String(e)}, skipping`);
   } finally {
     await removeIfExists(tmpOut);
   }

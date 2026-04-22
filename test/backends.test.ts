@@ -147,7 +147,7 @@ describe("scaleSvgRootDimensions — exact factor behavior", () => {
 
 // ── Fit step independence ─────────────────────────────────────────────────────
 
-describe("fitSvgPageWithInkscape — independent from scale correction", () => {
+describe("finalizeEmfWithInkscape — independent from scale correction", () => {
   const hasConv = commandExists("emf2svg-conv");
   const hasInk  = commandExists("inkscape");
 

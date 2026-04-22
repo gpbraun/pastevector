@@ -94,7 +94,7 @@ If the clipboard contains plain text or the file is not Markdown, the command fa
 | `pasteVector.copyMarkdownToClipboard` | `false` | Also copy the inserted Markdown image link to the clipboard |
 | `pasteVector.finalizeSvgWithInkscape` | `true` | Run Inkscape on SVG text pastes to fit the canvas and export as plain SVG |
 | `pasteVector.emfScalePercent` | `125` | EMF DPI scale factor. SVG output is multiplied by `100/emfScalePercent`. Set to `100` to disable. Applies on all platforms. |
-| `pasteVector.fitSvgPageWithInkscape` | `false` | After EMF conversion, run Inkscape to fit the canvas to the drawing (including stroke widths). Adds ~1–3 s per paste. No effect if Inkscape is not in PATH. |
+| `pasteVector.finalizeEmfWithInkscape` | `true` | After EMF conversion, run Inkscape to fit the canvas to the drawing (including stroke widths) and export as plain SVG. Adds ~1–3 s per paste. No effect if Inkscape is not in PATH. |
 
 ## Troubleshooting
 
@@ -108,4 +108,4 @@ Make sure `emf2svg-conv` is installed and on your PATH: `emf2svg-conv --version`
 Adjust `pasteVector.emfScalePercent` to match your display scaling. At 125% Windows display scaling the default value of `125` is correct. Set to `100` to disable scaling correction entirely.
 
 **Image is clipped at the edges**
-Enable `pasteVector.fitSvgPageWithInkscape` to have Inkscape refit the canvas to the drawing including stroke widths. Requires `inkscape` in PATH.
+Disable `pasteVector.finalizeEmfWithInkscape` to skip the Inkscape pass after EMF conversion. Requires `inkscape` in PATH for the pass to have any effect.

@@ -72,7 +72,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const copyMdToClipboard       = cfg.get<boolean>("pasteVector.copyMarkdownToClipboard", false);
     const finalizeSvg             = cfg.get<boolean>("pasteVector.finalizeSvgWithInkscape", true);
     const emfScalePercent            = cfg.get<number>("pasteVector.emfScalePercent", 125);
-    const fitSvgPageWithInkscape  = cfg.get<boolean>("pasteVector.fitSvgPageWithInkscape", false);
+    const finalizeEmfWithInkscape = cfg.get<boolean>("pasteVector.finalizeEmfWithInkscape", true);
     const copyMd                  = copyMdToClipboard && !isWSL();
     const docPath  = editor.document.uri.fsPath;
     const docDir   = path.dirname(docPath);
@@ -122,7 +122,7 @@ export async function activate(context: vscode.ExtensionContext) {
     try {
       const plan = await planWslWindowsClipboard(
         makeOutAbs, finalizeSvg,
-        { emfScalePercent, fitSvgPageWithInkscape },
+        { emfScalePercent, finalizeEmfWithInkscape },
         log,
       );
       if (plan) {

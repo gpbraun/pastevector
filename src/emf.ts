@@ -2,7 +2,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 
 import { T_CONVERT_MS, ensureDir, removeIfExists, statSafe, commandExists, runText } from "./util";
-import { scaleSvgRootDimensions, fitSvgPageWithInkscape } from "./svg";
+import { scaleSvgRootDimensions, finalizeEmfWithInkscape } from "./svg";
 
 // emf2svg-conv produces SVGs with width/height but no viewBox. The content is
 // positioned via a large translate() that exactly maps to the declared canvas.
@@ -46,7 +46,7 @@ export async function convertEmfToSvg(
   const factor = 100 / scalePercent;
   if (log) log(`handler=emf2svg-conv scalePercent=${scalePercent} factor=${factor.toFixed(6)} fit=${fitWithInkscape}`);
 
-  if (fitWithInkscape) await fitSvgPageWithInkscape(outSvgAbs, log);
+  if (fitWithInkscape) await finalizeEmfWithInkscape(outSvgAbs, log);
 
   // Always run after fit (no-op if Inkscape already added viewBox; fixes missing
   // viewBox when fit was skipped or failed).
