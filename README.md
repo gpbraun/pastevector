@@ -73,6 +73,10 @@ If the clipboard contains plain text or the file is not Markdown, the command fa
 
 ## Settings
 
+- **`pasteVector.replaceDefaultPaste`** (default: `false`)
+  
+  Makes `Ctrl+V` in any Markdown file run pasteVector first (inserting a vector image link if the clipboard has EMF/SVG/PNG) and fall back to a normal text paste for everything else. 
+
 - **`pasteVector.destinationTemplate`** (default: `img_${documentBaseName}_${unixTime}.${fileExtName}`)
   
   Output filename template. Available variables: `documentBaseName`, `unixTime`, `fileExtName`.

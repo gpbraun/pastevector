@@ -15,10 +15,16 @@ export async function ensureDir(p: string): Promise<void> {
 }
 
 export async function removeIfExists(p: string): Promise<void> {
-  try { await fs.unlink(p); } catch { /* ignore */ }
+  try {
+    await fs.unlink(p);
+  } catch {
+    /* ignore */
+  }
 }
 
-export async function statSafe(p: string): Promise<{ exists: boolean; size: number }> {
+export async function statSafe(
+  p: string,
+): Promise<{ exists: boolean; size: number }> {
   try {
     const st = await fs.stat(p);
     return { exists: true, size: st.size };
@@ -39,7 +45,9 @@ const CMD_CACHE = new Map<string, boolean>();
 export function commandExists(cmd: string): boolean {
   const cached = CMD_CACHE.get(cmd);
   if (cached !== undefined) return cached;
-  const r = cp.spawnSync("bash", ["-lc", `command -v ${cmd} >/dev/null 2>&1`], { stdio: "ignore" });
+  const r = cp.spawnSync("bash", ["-lc", `command -v ${cmd} >/dev/null 2>&1`], {
+    stdio: "ignore",
+  });
   const ok = r.status === 0;
   CMD_CACHE.set(cmd, ok);
   return ok;
@@ -59,13 +67,26 @@ export function runText(
     p.stdout.on("data", (d) => (stdout += d));
     p.stderr.on("data", (d) => (stderr += d));
     const timer = setTimeout(() => {
-      try { p.kill("SIGKILL"); } catch { }
-      resolve({ code: -1, stdout, stderr: `${stderr}\n[TIMEOUT ${timeoutMs}ms]` });
+      try {
+        p.kill("SIGKILL");
+      } catch {}
+      resolve({
+        code: -1,
+        stdout,
+        stderr: `${stderr}\n[TIMEOUT ${timeoutMs}ms]`,
+      });
     }, timeoutMs);
-    p.on("close", (code) => { clearTimeout(timer); resolve({ code, stdout, stderr }); });
+    p.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({ code, stdout, stderr });
+    });
     p.on("error", (e) => {
       clearTimeout(timer);
-      resolve({ code: -1, stdout, stderr: `${stderr}\n[SPAWN ERROR] ${e?.message ?? String(e)}` });
+      resolve({
+        code: -1,
+        stdout,
+        stderr: `${stderr}\n[SPAWN ERROR] ${e?.message ?? String(e)}`,
+      });
     });
   });
 }
@@ -83,13 +104,26 @@ export function runBin(
     p.stdout.on("data", (d: Buffer) => chunks.push(d));
     p.stderr.on("data", (d) => (stderr += d));
     const timer = setTimeout(() => {
-      try { p.kill("SIGKILL"); } catch { }
-      resolve({ code: -1, bytes: Buffer.concat(chunks), stderr: `${stderr}\n[TIMEOUT ${timeoutMs}ms]` });
+      try {
+        p.kill("SIGKILL");
+      } catch {}
+      resolve({
+        code: -1,
+        bytes: Buffer.concat(chunks),
+        stderr: `${stderr}\n[TIMEOUT ${timeoutMs}ms]`,
+      });
     }, timeoutMs);
-    p.on("close", (code) => { clearTimeout(timer); resolve({ code, bytes: Buffer.concat(chunks), stderr }); });
+    p.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({ code, bytes: Buffer.concat(chunks), stderr });
+    });
     p.on("error", (e) => {
       clearTimeout(timer);
-      resolve({ code: -1, bytes: Buffer.concat(chunks), stderr: `${stderr}\n[SPAWN ERROR] ${e?.message ?? String(e)}` });
+      resolve({
+        code: -1,
+        bytes: Buffer.concat(chunks),
+        stderr: `${stderr}\n[SPAWN ERROR] ${e?.message ?? String(e)}`,
+      });
     });
   });
 }

@@ -2,7 +2,7 @@
   "name": "pastevector",
   "displayName": "pasteVector",
   "description": "Paste ChemDraw and other clipboard vector content into Markdown by writing SVG or PNG files and inserting Markdown image links.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "local",
   "repository": {
     "type": "git",
@@ -44,6 +44,12 @@
         "key": "ctrl+alt+v",
         "command": "pasteVector.pasteVector",
         "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "key": "ctrl+v",
+        "mac": "cmd+v",
+        "command": "pasteVector.pasteVector",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly && config.pasteVector.replaceDefaultPaste"
       }
     ],
     "configuration": {
@@ -93,6 +99,11 @@
           "type": "boolean",
           "default": true,
           "description": "After emf2svg-conv conversion, run an Inkscape pass to fit the page canvas exactly to the drawing (including stroke widths) and export as plain SVG. Adds ~1-3s per paste. Has no effect if Inkscape is not in PATH."
+        },
+        "pasteVector.replaceDefaultPaste": {
+          "type": "boolean",
+          "default": false,
+          "description": "Replace ctrl+V (cmd+V on macOS) in Markdown files with pasteVector. Vector clipboard content (SVG, EMF, PNG) is pasted as an image link; all other content falls back to a normal paste."
         }
       }
     }

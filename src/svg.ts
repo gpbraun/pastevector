@@ -2,11 +2,22 @@ import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 
-import { T_CONVERT_MS, nonce, removeIfExists, statSafe, commandExists, runText, writeBytes } from "./util";
+import {
+  T_CONVERT_MS,
+  commandExists,
+  nonce,
+  removeIfExists,
+  runText,
+  statSafe,
+  writeBytes,
+} from "./util";
 
 // ── Root dimension scaler ─────────────────────────────────────────────────────
 
-export async function scaleSvgRootDimensions(svgPath: string, factor: number): Promise<void> {
+export async function scaleSvgRootDimensions(
+  svgPath: string,
+  factor: number,
+): Promise<void> {
   if (factor === 1.0) return;
   let svg = await fs.readFile(svgPath, "utf8");
 
@@ -22,10 +33,19 @@ export async function scaleSvgRootDimensions(svgPath: string, factor: number): P
     if (parts.length < 4 || parts[2] <= 0 || parts[3] <= 0) return;
     const newW = (parts[2] * factor).toFixed(4);
     const newH = (parts[3] * factor).toFixed(4);
-    svg = svg.replace(/(<svg\b[^>]*)(\/?>)/, `$1 width="${newW}px" height="${newH}px"$2`);
+    svg = svg.replace(
+      /(<svg\b[^>]*)(\/?>)/,
+      `$1 width="${newW}px" height="${newH}px"$2`,
+    );
   } else {
-    svg = svg.replace(wRe, `$1width="${(parseFloat(wm[2]) * factor).toFixed(4)}${wm[3]}"`);
-    svg = svg.replace(hRe, `$1height="${(parseFloat(hm[2]) * factor).toFixed(4)}${hm[3]}"`);
+    svg = svg.replace(
+      wRe,
+      `$1width="${(parseFloat(wm[2]) * factor).toFixed(4)}${wm[3]}"`,
+    );
+    svg = svg.replace(
+      hRe,
+      `$1height="${(parseFloat(hm[2]) * factor).toFixed(4)}${hm[3]}"`,
+    );
   }
 
   await fs.writeFile(svgPath, svg, "utf8");
@@ -38,16 +58,18 @@ export async function finalizeEmfWithInkscape(
   log?: (msg: string) => void,
 ): Promise<void> {
   if (!commandExists("inkscape")) {
-    if (log) log("warn finalizeEmfWithInkscape: inkscape not in PATH, skipping");
+    if (log)
+      log("warn finalizeEmfWithInkscape: inkscape not in PATH, skipping");
     return;
   }
 
   const tmpOut = path.join(os.tmpdir(), `pastevector_${nonce()}.fit.svg`);
   const args = [
-    "--batch-process", "--actions",
+    "--batch-process",
+    "--actions",
     [
       "select-all",
-      "object-stroke-to-path",
+      // "object-stroke-to-path",
       "fit-canvas-to-selection",
       `export-filename:${tmpOut}`,
       "export-type:svg",
@@ -63,13 +85,18 @@ export async function finalizeEmfWithInkscape(
     const st = await statSafe(tmpOut);
     if (st.exists && st.size > 0) {
       await fs.copyFile(tmpOut, svgPath);
-      if (log && r.stderr?.trim()) log(`inkscape fit stderr: ${r.stderr.trim()}`);
+      if (log && r.stderr?.trim())
+        log(`inkscape fit stderr: ${r.stderr.trim()}`);
     } else {
-      const detail = [r.stderr?.trim(), r.stdout?.trim()].filter(Boolean).join(" | ");
-      if (log) log(`warn finalizeEmfWithInkscape: no output (${detail}), skipping`);
+      const detail = [r.stderr?.trim(), r.stdout?.trim()]
+        .filter(Boolean)
+        .join(" | ");
+      if (log)
+        log(`warn finalizeEmfWithInkscape: no output (${detail}), skipping`);
     }
   } catch (e: any) {
-    if (log) log(`warn finalizeEmfWithInkscape: ${e?.message ?? String(e)}, skipping`);
+    if (log)
+      log(`warn finalizeEmfWithInkscape: ${e?.message ?? String(e)}, skipping`);
   } finally {
     await removeIfExists(tmpOut);
   }
@@ -78,7 +105,8 @@ export async function finalizeEmfWithInkscape(
 // Used for direct SVG clipboard pastes — runs multiple Inkscape strategies
 // to fit the canvas and export as plain SVG.
 export async function finalizeSvgWithInkscape(inSvgAbs: string): Promise<void> {
-  if (!commandExists("inkscape")) throw new Error("Inkscape not found in PATH.");
+  if (!commandExists("inkscape"))
+    throw new Error("Inkscape not found in PATH.");
 
   const tmpOut = path.join(os.tmpdir(), `pastevector_${nonce()}.final.svg`);
 
@@ -99,7 +127,8 @@ export async function finalizeSvgWithInkscape(inSvgAbs: string): Promise<void> {
       "--vacuum-defs",
     ],
     [
-      "--batch-process", "--actions",
+      "--batch-process",
+      "--actions",
       [
         "select-all",
         "fit-canvas-to-selection",
@@ -112,7 +141,8 @@ export async function finalizeSvgWithInkscape(inSvgAbs: string): Promise<void> {
       inSvgAbs,
     ],
     [
-      "--batch-process", "--actions",
+      "--batch-process",
+      "--actions",
       [
         "select-all",
         "object-stroke-to-path",
@@ -156,11 +186,19 @@ function decodeSvgDataUri(s: string): string {
   if (comma < 0) return s;
   const meta = s.slice(0, comma);
   const data = s.slice(comma + 1);
-  if (/;base64/i.test(meta)) return Buffer.from(data, "base64").toString("utf8");
-  try { return decodeURIComponent(data); } catch { return data; }
+  if (/;base64/i.test(meta))
+    return Buffer.from(data, "base64").toString("utf8");
+  try {
+    return decodeURIComponent(data);
+  } catch {
+    return data;
+  }
 }
 
-export async function writeSvgText(outSvgAbs: string, svgText: string): Promise<void> {
+export async function writeSvgText(
+  outSvgAbs: string,
+  svgText: string,
+): Promise<void> {
   const t = svgText.trim();
   const decoded = t.startsWith("data:image/svg+xml") ? decodeSvgDataUri(t) : t;
   await writeBytes(outSvgAbs, Buffer.from(decoded, "utf8"));

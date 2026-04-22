@@ -1,8 +1,15 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
-import { T_CONVERT_MS, ensureDir, removeIfExists, statSafe, commandExists, runText } from "./util";
-import { scaleSvgRootDimensions, finalizeEmfWithInkscape } from "./svg";
+import { finalizeEmfWithInkscape, scaleSvgRootDimensions } from "./svg";
+import {
+  T_CONVERT_MS,
+  commandExists,
+  ensureDir,
+  removeIfExists,
+  runText,
+  statSafe,
+} from "./util";
 
 // emf2svg-conv produces SVGs with width/height but no viewBox. The content is
 // positioned via a large translate() that exactly maps to the declared canvas.
@@ -15,7 +22,10 @@ async function ensureViewBox(svgPath: string): Promise<void> {
   const wm = svg.match(/\bwidth="([\d.]+)[^"]*"/);
   const hm = svg.match(/\bheight="([\d.]+)[^"]*"/);
   if (!wm || !hm) return;
-  svg = svg.replace(/(<svg\b[^>]*?)(\/?>)/, `$1 viewBox="0 0 ${wm[1]} ${hm[1]}"$2`);
+  svg = svg.replace(
+    /(<svg\b[^>]*?)(\/?>)/,
+    `$1 viewBox="0 0 ${wm[1]} ${hm[1]}"$2`,
+  );
   await fs.writeFile(svgPath, svg, "utf8");
 }
 
@@ -35,16 +45,25 @@ export async function convertEmfToSvg(
   await ensureDir(path.dirname(outSvgAbs));
   await removeIfExists(outSvgAbs);
 
-  const r = await runText("emf2svg-conv", ["-i", inEmfAbs, "-o", outSvgAbs], T_CONVERT_MS);
+  const r = await runText(
+    "emf2svg-conv",
+    ["-i", inEmfAbs, "-o", outSvgAbs],
+    T_CONVERT_MS,
+  );
 
   const st = await statSafe(outSvgAbs);
   if (!st.exists || st.size === 0) {
-    const detail = [r.stderr?.trim(), r.stdout?.trim()].filter(Boolean).join("\n");
+    const detail = [r.stderr?.trim(), r.stdout?.trim()]
+      .filter(Boolean)
+      .join("\n");
     throw new Error(`emf2svg-conv produced no output.\n${detail}`.trim());
   }
 
   const factor = 100 / scalePercent;
-  if (log) log(`handler=emf2svg-conv scalePercent=${scalePercent} factor=${factor.toFixed(6)} fit=${fitWithInkscape}`);
+  if (log)
+    log(
+      `handler=emf2svg-conv scalePercent=${scalePercent} factor=${factor.toFixed(6)} fit=${fitWithInkscape}`,
+    );
 
   if (fitWithInkscape) await finalizeEmfWithInkscape(outSvgAbs, log);
 

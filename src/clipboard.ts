@@ -5,9 +5,17 @@ import * as path from "path";
 import * as zlib from "zlib";
 
 import {
-  nonce, ensureDir, removeIfExists, statSafe, writeBytes,
-  commandExists, runText, runBin,
-  isWSL, wslpathWin, psEscapeSingleQuoted,
+  nonce,
+  ensureDir,
+  removeIfExists,
+  statSafe,
+  writeBytes,
+  commandExists,
+  runText,
+  runBin,
+  isWSL,
+  wslpathWin,
+  psEscapeSingleQuoted,
 } from "./util";
 import { finalizeSvgWithInkscape } from "./svg";
 import { convertEmfToSvg } from "./emf";
@@ -35,8 +43,8 @@ type LinuxHandler = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const T_LIST_MS   = 1_200;
-const T_READ_MS   = 6_000;
+const T_LIST_MS = 1_200;
+const T_READ_MS = 6_000;
 const T_WINCLIP_MS = 12_000;
 
 // ── Linux clipboard backend ───────────────────────────────────────────────────
@@ -48,20 +56,34 @@ class ClipboardBackend {
     if (this.kind === "wayland") {
       const r = await runText("wl-paste", ["--list-types"], T_LIST_MS);
       return (r.stdout || "")
-        .split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean)
         .map((raw) => ({ raw, base: raw.split(";")[0].trim() }));
     }
-    const r = await runText("xclip", ["-selection", "clipboard", "-o", "-t", "TARGETS"], T_LIST_MS);
+    const r = await runText(
+      "xclip",
+      ["-selection", "clipboard", "-o", "-t", "TARGETS"],
+      T_LIST_MS,
+    );
     return (r.stdout || "")
-      .split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
       .map((raw) => ({ raw, base: raw }));
   }
 
   async readType(rawType: string): Promise<Buffer> {
-    const r = this.kind === "wayland"
-      ? await runBin("wl-paste", ["-t", rawType], T_READ_MS)
-      : await runBin("xclip", ["-selection", "clipboard", "-o", "-t", rawType], T_READ_MS);
-    if (r.code !== 0 || r.bytes.length === 0) throw new Error(`Clipboard read failed (${rawType}).`);
+    const r =
+      this.kind === "wayland"
+        ? await runBin("wl-paste", ["-t", rawType], T_READ_MS)
+        : await runBin(
+            "xclip",
+            ["-selection", "clipboard", "-o", "-t", rawType],
+            T_READ_MS,
+          );
+    if (r.code !== 0 || r.bytes.length === 0)
+      throw new Error(`Clipboard read failed (${rawType}).`);
     return r.bytes;
   }
 }
@@ -70,12 +92,16 @@ function getBackends(prefer: "auto" | "wayland" | "x11"): ClipboardBackend[] {
   const hasWayland = !!process.env.WAYLAND_DISPLAY && commandExists("wl-paste");
   const hasX11 = commandExists("xclip");
   const w = hasWayland ? new ClipboardBackend("wayland") : null;
-  const x = hasX11    ? new ClipboardBackend("x11")     : null;
-  const ordered = prefer === "wayland" ? [w, x] : prefer === "x11" ? [x, w] : [w, x];
+  const x = hasX11 ? new ClipboardBackend("x11") : null;
+  const ordered =
+    prefer === "wayland" ? [w, x] : prefer === "x11" ? [x, w] : [w, x];
   return ordered.filter(Boolean) as ClipboardBackend[];
 }
 
-function pickFirst(offered: OfferedType[], bases: string[]): OfferedType | null {
+function pickFirst(
+  offered: OfferedType[],
+  bases: string[],
+): OfferedType | null {
   for (const b of bases) {
     const hit = offered.find((t) => t.base === b);
     if (hit) return hit;
@@ -84,7 +110,9 @@ function pickFirst(offered: OfferedType[], bases: string[]): OfferedType | null 
 }
 
 async function maybeGunzip(buf: Buffer): Promise<Buffer> {
-  return new Promise((resolve) => zlib.gunzip(buf, (err, out) => resolve(err ? buf : out)));
+  return new Promise((resolve) =>
+    zlib.gunzip(buf, (err, out) => resolve(err ? buf : out)),
+  );
 }
 
 // ── Linux handlers ────────────────────────────────────────────────────────────
@@ -115,7 +143,10 @@ const LINUX_HANDLERS: LinuxHandler[] = [
     run: async (b, out) => {
       const cfg = vscode.workspace.getConfiguration();
       const scalePercent = cfg.get<number>("pasteVector.emfScalePercent", 125);
-      const fitPage      = cfg.get<boolean>("pasteVector.finalizeEmfWithInkscape", true);
+      const fitPage = cfg.get<boolean>(
+        "pasteVector.finalizeEmfWithInkscape",
+        true,
+      );
       const tmpEmf = path.join(os.tmpdir(), `pastevector_${nonce()}.emf`);
       await fs.writeFile(tmpEmf, b);
       try {
@@ -129,13 +160,17 @@ const LINUX_HANDLERS: LinuxHandler[] = [
     name: "png",
     ext: "png",
     bases: ["image/png", "image/x-png"],
-    run: async (b, out) => { await writeBytes(out, b); },
+    run: async (b, out) => {
+      await writeBytes(out, b);
+    },
   },
   {
     name: "jpg",
     ext: "jpg",
     bases: ["image/jpeg"],
-    run: async (b, out) => { await writeBytes(out, b); },
+    run: async (b, out) => {
+      await writeBytes(out, b);
+    },
   },
 ];
 
@@ -160,7 +195,8 @@ export async function planLinuxClipboard(
           const bytes = await backend.readType(t.raw);
           await h.run(bytes, outAbs, finalizeSvg);
           const st = await statSafe(outAbs);
-          if (!st.exists || st.size === 0) throw new Error(`Linux handler ${h.name} produced empty output.`);
+          if (!st.exists || st.size === 0)
+            throw new Error(`Linux handler ${h.name} produced empty output.`);
         },
       };
     }
@@ -177,7 +213,8 @@ async function exportWindowsClipboard(
   outPngAbs: string,
   tmpEmfAbs: string,
 ): Promise<WslExportKind | null> {
-  if (!isWSL() || !commandExists("powershell.exe") || !commandExists("wslpath")) return null;
+  if (!isWSL() || !commandExists("powershell.exe") || !commandExists("wslpath"))
+    return null;
 
   const outSvgWin = wslpathWin(outSvgAbs);
   const outPngWin = wslpathWin(outPngAbs);
@@ -228,11 +265,11 @@ async function exportWindowsClipboard(
     "using System.Runtime.InteropServices;",
     "public static class ClipEmf {",
     "  const uint CF_ENHMETAFILE = 14;",
-    "  [DllImport(\"user32.dll\", ExactSpelling=true)] static extern bool OpenClipboard(IntPtr h);",
-    "  [DllImport(\"user32.dll\", ExactSpelling=true)] static extern bool CloseClipboard();",
-    "  [DllImport(\"user32.dll\", ExactSpelling=true)] static extern bool IsClipboardFormatAvailable(uint format);",
-    "  [DllImport(\"user32.dll\", ExactSpelling=true)] static extern IntPtr GetClipboardData(uint format);",
-    "  [DllImport(\"gdi32.dll\",  ExactSpelling=true)] static extern uint GetEnhMetaFileBits(IntPtr hemf, uint cbBuffer, byte[] lpbBuffer);",
+    '  [DllImport("user32.dll", ExactSpelling=true)] static extern bool OpenClipboard(IntPtr h);',
+    '  [DllImport("user32.dll", ExactSpelling=true)] static extern bool CloseClipboard();',
+    '  [DllImport("user32.dll", ExactSpelling=true)] static extern bool IsClipboardFormatAvailable(uint format);',
+    '  [DllImport("user32.dll", ExactSpelling=true)] static extern IntPtr GetClipboardData(uint format);',
+    '  [DllImport("gdi32.dll",  ExactSpelling=true)] static extern uint GetEnhMetaFileBits(IntPtr hemf, uint cbBuffer, byte[] lpbBuffer);',
     "  public static int Save(string path) {",
     "    if (!IsClipboardFormatAvailable(CF_ENHMETAFILE)) return 2;",
     "    if (!OpenClipboard(IntPtr.Zero)) return 3;",
@@ -261,14 +298,29 @@ async function exportWindowsClipboard(
     "exit 2",
   ].join("\n");
 
-  const r = await runText("powershell.exe", ["-NoProfile", "-STA", "-Command", ps], T_WINCLIP_MS);
+  const r = await runText(
+    "powershell.exe",
+    ["-NoProfile", "-STA", "-Command", ps],
+    T_WINCLIP_MS,
+  );
 
-  if (r.code === 12) { const st = await statSafe(outSvgAbs); return st.exists && st.size > 0 ? "svg" : null; }
-  if (r.code === 10) { const st = await statSafe(tmpEmfAbs); return st.exists && st.size > 0 ? "emf" : null; }
-  if (r.code === 11) { const st = await statSafe(outPngAbs); return st.exists && st.size > 0 ? "png" : null; }
+  if (r.code === 12) {
+    const st = await statSafe(outSvgAbs);
+    return st.exists && st.size > 0 ? "svg" : null;
+  }
+  if (r.code === 10) {
+    const st = await statSafe(tmpEmfAbs);
+    return st.exists && st.size > 0 ? "emf" : null;
+  }
+  if (r.code === 11) {
+    const st = await statSafe(outPngAbs);
+    return st.exists && st.size > 0 ? "png" : null;
+  }
   if (r.code === 2) return null;
 
-  const details = [r.stderr?.trim(), r.stdout?.trim()].filter(Boolean).join("\n");
+  const details = [r.stderr?.trim(), r.stdout?.trim()]
+    .filter(Boolean)
+    .join("\n");
   throw new Error(`Windows clipboard export failed.\n${details}`.trim());
 }
 
@@ -324,8 +376,10 @@ export async function planWslWindowsClipboard(
       convert: async () => {
         try {
           await convertEmfToSvg(
-            tmpEmfAbs, outSvgAbs,
-            config.emfScalePercent, config.finalizeEmfWithInkscape,
+            tmpEmfAbs,
+            outSvgAbs,
+            config.emfScalePercent,
+            config.finalizeEmfWithInkscape,
             log,
           );
         } finally {
