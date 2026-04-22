@@ -6,35 +6,54 @@ Designed for use in **WSL** (Windows Subsystem for Linux) with applications like
 
 ## Features
 
-- Pastes SVG, EMF (converted to SVG), PNG, and JPEG from the clipboard
+- Pastes SVG, SVGZ, EMF (converted to SVG), PNG, and JPEG from the clipboard
 - In WSL, reads directly from the Windows clipboard via PowerShell — no X server needed
-- Converts EMF to SVG using Inkscape, with text converted to paths and canvas fitted to the drawing
-- Corrects HiDPI display scaling so pasted images are always at their correct document size
+- Converts EMF to SVG using `emf2svg-conv` — fast (~50 ms), no Inkscape required for the basic path
+- Corrects EMF DPI scaling so pasted images are always at their correct document size
+- Markdown image link is inserted immediately; file conversion runs in the background
+- On conversion failure, a VS Code error notification is shown
 - Configurable output filename template, alt text, and clipboard backend
 
 ## Requirements
 
-|             Tool |                                                Purpose |
-| ---------------: | -----------------------------------------------------: |
-|       `inkscape` |                   EMF → SVG conversion, canvas fitting |
-|       `wl-paste` |      Wayland clipboard access (install `wl-clipboard`) |
-|          `xclip` |                                   X11 clipboard access |
+| Tool | Purpose |
+| ---: | ------: |
+| `emf2svg-conv` | EMF → SVG conversion (required for EMF content) |
+| `inkscape` | Optional: fit canvas to drawing after EMF conversion |
+| `wl-paste` | Wayland clipboard access (install `wl-clipboard`) |
+| `xclip` | X11 clipboard access |
 | `powershell.exe` | Windows clipboard access from WSL (built into Windows) |
 
-Only the tools relevant to your environment are needed. In WSL, `powershell.exe` is always available and is the primary clipboard backend; `wl-paste`/`xclip` are fallbacks.
+Only the tools relevant to your environment are needed. In WSL, `powershell.exe` is always available and is the primary clipboard backend.
+
+### Installing emf2svg-conv (WSL/Ubuntu)
+
+```bash
+sudo apt install libemf2svg-dev
+```
+
+Or build from source: [github.com/kakwa/libemf2svg](https://github.com/kakwa/libemf2svg)
+
+### Installing optional tools
+
+```bash
+sudo apt install inkscape        # optional canvas fitting
+sudo apt install wl-clipboard    # Wayland clipboard
+sudo apt install xclip           # X11 clipboard
+```
 
 ## Installation
 
 ### From VSIX (recommended)
 
-1. Download the latest `.vsix` file from the [Releases](https://github.com/gpbraun/pastevector/releases) page
-2. In VS Code, open the Command Palette (`Ctrl+Shift+P`) and run **Extensions: Install from VSIX...**
-3. Select the downloaded file and reload VS Code when prompted
+1. Download the latest `.vsix` from the [Releases](https://github.com/gpbraun/pastevector/releases) page
+2. In VS Code: `Ctrl+Shift+P` → **Extensions: Install from VSIX...**
+3. Select the file and reload VS Code
 
-Or install from the terminal:
+Or from the terminal:
 
 ```bash
-code --install-extension pastevector-x.x.x.vsix
+code --install-extension pastevector-0.2.0.vsix
 ```
 
 ### Build from source
@@ -48,49 +67,45 @@ npx vsce package
 code --install-extension pastevector-*.vsix
 ```
 
-### Install dependencies (WSL/Ubuntu)
-
-```bash
-# Inkscape
-sudo apt install inkscape
-# Wayland clipboard (optional, for native Linux Wayland)
-sudo apt install wl-clipboard
-# X11 clipboard (optional, for native Linux X11)
-sudo apt install xclip
-```
-
 ## Usage
 
-1. Copy a vector image to the clipboard (e.g. from ChemDraw, Inkscape, or any application that copies as EMF or SVG)
+1. Copy a vector image to the clipboard (e.g. from ChemDraw, Inkscape, or any app that copies as EMF or SVG)
 2. Open a `.md` file in VS Code
 3. Press `Ctrl+Alt+V`
 
-The image is saved as a file next to the Markdown document and a link is inserted at the cursor:
+The Markdown image link is inserted at the cursor immediately:
 
 ```markdown
 ![](img_notes_1234567890.svg)
 ```
 
+The file is written in the background. If conversion fails, a notification appears in VS Code.
+
 If the clipboard contains plain text or the file is not Markdown, the command falls back to the normal VS Code paste.
 
 ## Settings
 
-| Setting                               | Default                                              | Description                                                                        |
-| ------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `pasteVector.destinationTemplate`     | `img_${documentBaseName}_${unixTime}.${fileExtName}` | Output filename template. Variables: `documentBaseName`, `unixTime`, `fileExtName` |
-| `pasteVector.preferBackend`           | `auto`                                               | Linux clipboard backend: `auto`, `wayland`, or `x11`                               |
-| `pasteVector.altText`                 | `""`                                                 | Alt text for the inserted Markdown image link                                      |
-| `pasteVector.finalizeSvgWithInkscape` | `true`                                               | Run Inkscape on generated SVGs to fit the canvas and save as plain SVG             |
-| `pasteVector.showLog`                 | `false`                                              | Show the pasteVector output channel while the command runs                         |
-| `pasteVector.copyMarkdownToClipboard` | `false`                                              | Also copy the inserted Markdown image link to the clipboard                        |
+| Setting | Default | Description |
+| ------- | ------- | ----------- |
+| `pasteVector.destinationTemplate` | `img_${documentBaseName}_${unixTime}.${fileExtName}` | Output filename template. Variables: `documentBaseName`, `unixTime`, `fileExtName` |
+| `pasteVector.preferBackend` | `auto` | Linux clipboard backend: `auto`, `wayland`, or `x11` |
+| `pasteVector.altText` | `""` | Alt text for the inserted Markdown image link |
+| `pasteVector.showLog` | `false` | Show the pasteVector output channel while the command runs |
+| `pasteVector.copyMarkdownToClipboard` | `false` | Also copy the inserted Markdown image link to the clipboard |
+| `pasteVector.finalizeSvgWithInkscape` | `true` | Run Inkscape on SVG text pastes to fit the canvas and export as plain SVG |
+| `pasteVector.emfScalePercent` | `125` | EMF DPI scale factor. SVG output is multiplied by `100/emfScalePercent`. Set to `100` to disable. Applies on all platforms. |
+| `pasteVector.fitSvgPageWithInkscape` | `false` | After EMF conversion, run Inkscape to fit the canvas to the drawing (including stroke widths). Adds ~1–3 s per paste. No effect if Inkscape is not in PATH. |
 
 ## Troubleshooting
 
 **Nothing happens on `Ctrl+Alt+V`**
-Run `pasteVector: Show Clipboard Types` from the Command Palette to see what formats are on the clipboard. Enable `pasteVector.showLog` to see detailed output in the Output panel.
+Run `pasteVector: Show Clipboard Types` from the Command Palette to see what formats are on the clipboard. Enable `pasteVector.showLog` for detailed output in the Output panel.
 
 **EMF conversion fails**
-Make sure `inkscape` is installed and on your PATH: `inkscape --version`. In WSL, `which inkscape` should return a result.
+Make sure `emf2svg-conv` is installed and on your PATH: `emf2svg-conv --version`. In WSL, `which emf2svg-conv` should return a result.
 
 **Image is the wrong size**
-The extension automatically corrects for Windows HiDPI display scaling (125%, 150%, etc.) by reading the EMF header. If the size still looks off, check the `pasteVector` output channel for the logged dimensions.
+Adjust `pasteVector.emfScalePercent` to match your display scaling. At 125% Windows display scaling the default value of `125` is correct. Set to `100` to disable scaling correction entirely.
+
+**Image is clipped at the edges**
+Enable `pasteVector.fitSvgPageWithInkscape` to have Inkscape refit the canvas to the drawing including stroke widths. Requires `inkscape` in PATH.
