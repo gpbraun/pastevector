@@ -47,6 +47,7 @@ export async function fitSvgPageWithInkscape(
     "--batch-process", "--actions",
     [
       "select-all",
+      "object-stroke-to-path",
       "fit-canvas-to-selection",
       `export-filename:${tmpOut}`,
       "export-type:svg",

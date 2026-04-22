@@ -3,7 +3,7 @@ import * as path from "path";
 
 import { isWSL } from "./util";
 import { looksLikeSvgText, writeSvgText, finalizeSvgWithInkscape } from "./svg";
-import { tryLinuxClipboard, tryWslWindowsClipboard, listClipboardTypes } from "./clipboard";
+import { planLinuxClipboard, planWslWindowsClipboard, listClipboardTypes, ClipboardPlan } from "./clipboard";
 
 // ── Formatting helpers ────────────────────────────────────────────────────────
 
@@ -38,6 +38,19 @@ async function insertMarkdown(
   return rel;
 }
 
+// Runs plan.convert() in the background. On failure, logs and shows a VS Code
+// error notification so the user knows the image file was not written.
+function runConvert(
+  plan: ClipboardPlan,
+  log: (msg: string) => void,
+): void {
+  plan.convert().catch((e: any) => {
+    const msg = e?.message ?? String(e);
+    log(`error ${plan.handler}: ${msg}`);
+    vscode.window.showErrorMessage(`pasteVector: Conversion failed — ${msg}`);
+  });
+}
+
 // ── Extension entry points ────────────────────────────────────────────────────
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -58,8 +71,8 @@ export async function activate(context: vscode.ExtensionContext) {
     const showLog                 = cfg.get<boolean>("pasteVector.showLog", false);
     const copyMdToClipboard       = cfg.get<boolean>("pasteVector.copyMarkdownToClipboard", false);
     const finalizeSvg             = cfg.get<boolean>("pasteVector.finalizeSvgWithInkscape", true);
-    const windowsDisplayScalePercent = cfg.get<number>("pasteVector.windowsDisplayScalePercent", 125);
-    const fitSvgPageWithInkscape  = cfg.get<boolean>("pasteVector.fitSvgPageWithInkscape", true);
+    const emfScalePercent            = cfg.get<number>("pasteVector.emfScalePercent", 125);
+    const fitSvgPageWithInkscape  = cfg.get<boolean>("pasteVector.fitSvgPageWithInkscape", false);
     const copyMd                  = copyMdToClipboard && !isWSL();
     const docPath  = editor.document.uri.fsPath;
     const docDir   = path.dirname(docPath);
@@ -77,14 +90,20 @@ export async function activate(context: vscode.ExtensionContext) {
     const clipText = (await vscode.env.clipboard.readText()) ?? "";
     const t = clipText.trim();
 
-    // SVG text / data-URI in clipboard
+    // SVG text / data-URI in clipboard — insert link immediately, write in background
     if (t && looksLikeSvgText(t)) {
       try {
         const outSvgAbs = makeOutAbs("svg");
-        await writeSvgText(outSvgAbs, t);
-        if (finalizeSvg) await finalizeSvgWithInkscape(outSvgAbs);
         const rel = await insertMarkdown(editor, docDir, outSvgAbs, altText, copyMd);
         log(`ok handler=svg-text -> ${rel}`);
+        (async () => {
+          await writeSvgText(outSvgAbs, t);
+          if (finalizeSvg) await finalizeSvgWithInkscape(outSvgAbs);
+        })().catch((e: any) => {
+          const msg = e?.message ?? String(e);
+          log(`error svg-text: ${msg}`);
+          vscode.window.showErrorMessage(`pasteVector: Conversion failed — ${msg}`);
+        });
         return;
       } catch (e: any) {
         log(`warn svg-text failed: ${e?.message ?? String(e)}`);
@@ -98,15 +117,18 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // WSL → Windows clipboard (SVG, EMF, PNG)
+    // PS extraction runs synchronously so we know the path and type; conversion
+    // (emf2svg-conv / Inkscape) runs in the background after the link is inserted.
     try {
-      const wslRes = await tryWslWindowsClipboard(
+      const plan = await planWslWindowsClipboard(
         makeOutAbs, finalizeSvg,
-        { windowsDisplayScalePercent, fitSvgPageWithInkscape },
+        { emfScalePercent, fitSvgPageWithInkscape },
         log,
       );
-      if (wslRes) {
-        const rel = await insertMarkdown(editor, docDir, wslRes.outAbs, altText, copyMd);
-        log(`ok handler=${wslRes.handler} type=${wslRes.usedType} -> ${rel}`);
+      if (plan) {
+        const rel = await insertMarkdown(editor, docDir, plan.outAbs, altText, copyMd);
+        log(`ok handler=${plan.handler} type=${plan.usedType} -> ${rel}`);
+        runConvert(plan, log);
         return;
       }
     } catch (e: any) {
@@ -114,11 +136,14 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Linux clipboard (Wayland / X11)
+    // Type listing runs synchronously so we know the path and extension; byte
+    // read and conversion run in the background after the link is inserted.
     try {
-      const linuxRes = await tryLinuxClipboard(preferBackend, makeOutAbs, finalizeSvg);
-      if (linuxRes) {
-        const rel = await insertMarkdown(editor, docDir, linuxRes.outAbs, altText, copyMd);
-        log(`ok handler=${linuxRes.handler} type=${linuxRes.usedType} -> ${rel}`);
+      const plan = await planLinuxClipboard(preferBackend, makeOutAbs, finalizeSvg);
+      if (plan) {
+        const rel = await insertMarkdown(editor, docDir, plan.outAbs, altText, copyMd);
+        log(`ok handler=${plan.handler} type=${plan.usedType} -> ${rel}`);
+        runConvert(plan, log);
         return;
       }
     } catch (e: any) {

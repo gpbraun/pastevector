@@ -14,10 +14,12 @@ import { convertEmfToSvg } from "./emf";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type ClipboardResult = {
+// Plan: the output path is known; convert() does the slow I/O work in background.
+export type ClipboardPlan = {
   outAbs: string;
   handler: string;
   usedType: string;
+  convert: () => Promise<void>;
 };
 
 type BackendKind = "wayland" | "x11";
@@ -112,8 +114,8 @@ const LINUX_HANDLERS: LinuxHandler[] = [
     bases: ["WCF_ENHMETAFILE", "image/x-emf", "image/emf"],
     run: async (b, out) => {
       const cfg = vscode.workspace.getConfiguration();
-      const scalePercent = cfg.get<number>("pasteVector.windowsDisplayScalePercent", 125);
-      const fitPage      = cfg.get<boolean>("pasteVector.fitSvgPageWithInkscape", true);
+      const scalePercent = cfg.get<number>("pasteVector.emfScalePercent", 125);
+      const fitPage      = cfg.get<boolean>("pasteVector.fitSvgPageWithInkscape", false);
       const tmpEmf = path.join(os.tmpdir(), `pastevector_${nonce()}.emf`);
       await fs.writeFile(tmpEmf, b);
       try {
@@ -137,22 +139,30 @@ const LINUX_HANDLERS: LinuxHandler[] = [
   },
 ];
 
-export async function tryLinuxClipboard(
+// planLinuxClipboard: list types synchronously, then return a plan.
+// convert() does the actual byte read and conversion in the background.
+export async function planLinuxClipboard(
   prefer: "auto" | "wayland" | "x11",
   makeOutAbs: (ext: string) => string,
   finalizeSvg: boolean,
-): Promise<ClipboardResult | null> {
+): Promise<ClipboardPlan | null> {
   for (const backend of getBackends(prefer)) {
     const offered = await backend.listTypes();
     for (const h of LINUX_HANDLERS) {
       const t = pickFirst(offered, h.bases);
       if (!t) continue;
-      const bytes = await backend.readType(t.raw);
       const outAbs = makeOutAbs(h.ext);
-      await h.run(bytes, outAbs, finalizeSvg);
-      const st = await statSafe(outAbs);
-      if (!st.exists || st.size === 0) throw new Error(`Linux handler ${h.name} produced empty output.`);
-      return { outAbs, handler: `linux-${h.name}`, usedType: `${backend.kind}/${t.base}` };
+      return {
+        outAbs,
+        handler: `linux-${h.name}`,
+        usedType: `${backend.kind}/${t.base}`,
+        convert: async () => {
+          const bytes = await backend.readType(t.raw);
+          await h.run(bytes, outAbs, finalizeSvg);
+          const st = await statSafe(outAbs);
+          if (!st.exists || st.size === 0) throw new Error(`Linux handler ${h.name} produced empty output.`);
+        },
+      };
     }
   }
   return null;
@@ -277,12 +287,15 @@ export async function listClipboardTypes(
   return results;
 }
 
-export async function tryWslWindowsClipboard(
+// planWslWindowsClipboard: runs the PS export synchronously (raw bytes land on
+// disk), then returns a plan. convert() does only the emf2svg-conv / Inkscape
+// work in the background — the slow file-I/O part is already done.
+export async function planWslWindowsClipboard(
   makeOutAbs: (ext: string) => string,
   finalizeSvg: boolean,
-  config: { windowsDisplayScalePercent: number; fitSvgPageWithInkscape: boolean },
+  config: { emfScalePercent: number; fitSvgPageWithInkscape: boolean },
   log: (msg: string) => void,
-): Promise<ClipboardResult | null> {
+): Promise<ClipboardPlan | null> {
   if (!isWSL()) return null;
 
   const outSvgAbs = makeOutAbs("svg");
@@ -293,22 +306,40 @@ export async function tryWslWindowsClipboard(
   if (!kind) return null;
 
   if (kind === "svg") {
-    if (finalizeSvg) await finalizeSvgWithInkscape(outSvgAbs);
-    return { outAbs: outSvgAbs, handler: "wsl-svg", usedType: "windows/svg" };
+    return {
+      outAbs: outSvgAbs,
+      handler: "wsl-svg",
+      usedType: "windows/svg",
+      convert: async () => {
+        if (finalizeSvg) await finalizeSvgWithInkscape(outSvgAbs);
+      },
+    };
   }
 
   if (kind === "emf") {
-    try {
-      await convertEmfToSvg(
-        tmpEmfAbs, outSvgAbs,
-        config.windowsDisplayScalePercent, config.fitSvgPageWithInkscape,
-        log,
-      );
-    } finally {
-      await removeIfExists(tmpEmfAbs);
-    }
-    return { outAbs: outSvgAbs, handler: "wsl-emf", usedType: "windows/emf" };
+    return {
+      outAbs: outSvgAbs,
+      handler: "wsl-emf",
+      usedType: "windows/emf",
+      convert: async () => {
+        try {
+          await convertEmfToSvg(
+            tmpEmfAbs, outSvgAbs,
+            config.emfScalePercent, config.fitSvgPageWithInkscape,
+            log,
+          );
+        } finally {
+          await removeIfExists(tmpEmfAbs);
+        }
+      },
+    };
   }
 
-  return { outAbs: outPngAbs, handler: "wsl-png", usedType: "windows/png" };
+  // kind === "png" — file already written by PS script
+  return {
+    outAbs: outPngAbs,
+    handler: "wsl-png",
+    usedType: "windows/png",
+    convert: async () => {},
+  };
 }

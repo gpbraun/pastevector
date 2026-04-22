@@ -14,11 +14,11 @@ Designed for use in **WSL** (Windows Subsystem for Linux) with applications like
 
 ## Requirements
 
-| Tool | Purpose |
-|------|---------|
-| `inkscape` | EMF → SVG conversion, canvas fitting |
-| `wl-paste` | Wayland clipboard access (install `wl-clipboard`) |
-| `xclip` | X11 clipboard access |
+|             Tool |                                                Purpose |
+| ---------------: | -----------------------------------------------------: |
+|       `inkscape` |                   EMF → SVG conversion, canvas fitting |
+|       `wl-paste` |      Wayland clipboard access (install `wl-clipboard`) |
+|          `xclip` |                                   X11 clipboard access |
 | `powershell.exe` | Windows clipboard access from WSL (built into Windows) |
 
 Only the tools relevant to your environment are needed. In WSL, `powershell.exe` is always available and is the primary clipboard backend; `wl-paste`/`xclip` are fallbacks.
@@ -53,10 +53,8 @@ code --install-extension pastevector-*.vsix
 ```bash
 # Inkscape
 sudo apt install inkscape
-
 # Wayland clipboard (optional, for native Linux Wayland)
 sudo apt install wl-clipboard
-
 # X11 clipboard (optional, for native Linux X11)
 sudo apt install xclip
 ```
@@ -77,14 +75,14 @@ If the clipboard contains plain text or the file is not Markdown, the command fa
 
 ## Settings
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `pasteVector.destinationTemplate` | `img_${documentBaseName}_${unixTime}.${fileExtName}` | Output filename template. Variables: `documentBaseName`, `unixTime`, `fileExtName` |
-| `pasteVector.preferBackend` | `auto` | Linux clipboard backend: `auto`, `wayland`, or `x11` |
-| `pasteVector.altText` | `""` | Alt text for the inserted Markdown image link |
-| `pasteVector.finalizeSvgWithInkscape` | `true` | Run Inkscape on generated SVGs to fit the canvas and save as plain SVG |
-| `pasteVector.showLog` | `false` | Show the pasteVector output channel while the command runs |
-| `pasteVector.copyMarkdownToClipboard` | `false` | Also copy the inserted Markdown image link to the clipboard |
+| Setting                               | Default                                              | Description                                                                        |
+| ------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `pasteVector.destinationTemplate`     | `img_${documentBaseName}_${unixTime}.${fileExtName}` | Output filename template. Variables: `documentBaseName`, `unixTime`, `fileExtName` |
+| `pasteVector.preferBackend`           | `auto`                                               | Linux clipboard backend: `auto`, `wayland`, or `x11`                               |
+| `pasteVector.altText`                 | `""`                                                 | Alt text for the inserted Markdown image link                                      |
+| `pasteVector.finalizeSvgWithInkscape` | `true`                                               | Run Inkscape on generated SVGs to fit the canvas and save as plain SVG             |
+| `pasteVector.showLog`                 | `false`                                              | Show the pasteVector output channel while the command runs                         |
+| `pasteVector.copyMarkdownToClipboard` | `false`                                              | Also copy the inserted Markdown image link to the clipboard                        |
 
 ## Troubleshooting
 

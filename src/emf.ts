@@ -1,7 +1,23 @@
+import * as fs from "fs/promises";
 import * as path from "path";
 
 import { T_CONVERT_MS, ensureDir, removeIfExists, statSafe, commandExists, runText } from "./util";
 import { scaleSvgRootDimensions, fitSvgPageWithInkscape } from "./svg";
+
+// emf2svg-conv produces SVGs with width/height but no viewBox. The content is
+// positioned via a large translate() that exactly maps to the declared canvas.
+// Without a viewBox, scaling width/height shrinks the canvas but leaves content
+// coordinates unchanged, clipping anything near the original edges. Adding
+// viewBox="0 0 W H" makes the coordinate system scale with the canvas.
+async function ensureViewBox(svgPath: string): Promise<void> {
+  let svg = await fs.readFile(svgPath, "utf8");
+  if (/\bviewBox\s*=/.test(svg)) return;
+  const wm = svg.match(/\bwidth="([\d.]+)[^"]*"/);
+  const hm = svg.match(/\bheight="([\d.]+)[^"]*"/);
+  if (!wm || !hm) return;
+  svg = svg.replace(/(<svg\b[^>]*?)(\/?>)/, `$1 viewBox="0 0 ${wm[1]} ${hm[1]}"$2`);
+  await fs.writeFile(svgPath, svg, "utf8");
+}
 
 export async function convertEmfToSvg(
   inEmfAbs: string,
@@ -32,6 +48,9 @@ export async function convertEmfToSvg(
 
   if (fitWithInkscape) await fitSvgPageWithInkscape(outSvgAbs, log);
 
+  // Always run after fit (no-op if Inkscape already added viewBox; fixes missing
+  // viewBox when fit was skipped or failed).
+  await ensureViewBox(outSvgAbs);
   await scaleSvgRootDimensions(outSvgAbs, factor);
 
   if (log) log(`emf2svg-conv -> ${outSvgAbs}`);

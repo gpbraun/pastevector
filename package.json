@@ -84,15 +84,15 @@
           "default": true,
           "description": "Run Inkscape on pasted SVG text to fit the canvas and save as plain SVG. Does not affect EMF conversion (use pasteVector.fitSvgPageWithInkscape for that)."
         },
-        "pasteVector.windowsDisplayScalePercent": {
+        "pasteVector.emfScalePercent": {
           "type": "number",
           "default": 125,
-          "description": "Windows display scale percentage (e.g. 125 for 125%). After EMF→SVG conversion the root SVG size is multiplied by 100/windowsDisplayScalePercent. Set to 100 to disable correction."
+          "description": "EMF DPI scale factor (e.g. 125 for 125%). After EMF→SVG conversion the root SVG size is multiplied by 100/emfScalePercent. Applies on all platforms. Set to 100 to disable correction."
         },
         "pasteVector.fitSvgPageWithInkscape": {
           "type": "boolean",
-          "default": true,
-          "description": "After emf2svg-conv conversion, run a single Inkscape pass to fit the page canvas to the drawing. Has no effect if Inkscape is not in PATH."
+          "default": false,
+          "description": "After emf2svg-conv conversion, run an Inkscape pass to fit the page canvas exactly to the drawing (including stroke widths). Adds ~1-3s per paste. Has no effect if Inkscape is not in PATH."
         }
       }
     }
