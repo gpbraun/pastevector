@@ -10,36 +10,24 @@ Designed for use in **WSL** (Windows Subsystem for Linux) with applications like
 - In WSL, reads directly from the Windows clipboard via PowerShell — no X server needed
 - Converts EMF to SVG using `emf2svg-conv` — fast (~50 ms), no Inkscape required for the basic path
 - Corrects EMF DPI scaling so pasted images are always at their correct document size
-- Markdown image link is inserted immediately; file conversion runs in the background
-- On conversion failure, a VS Code error notification is shown
 - Configurable output filename template, alt text, and clipboard backend
 
 ## Requirements
 
-| Tool | Purpose |
-| ---: | ------: |
-| `emf2svg-conv` | EMF → SVG conversion (required for EMF content) |
-| `inkscape` | Optional: fit canvas to drawing after EMF conversion |
-| `wl-paste` | Wayland clipboard access (install `wl-clipboard`) |
-| `xclip` | X11 clipboard access |
-| `powershell.exe` | Windows clipboard access from WSL (built into Windows) |
+- **`wl-paste`** — Wayland clipboard access
+- **`xclip`** — X11 clipboard access
+- **`powershell.exe`** — Windows clipboard access from WSL (built into Windows)
+- **`emf2svg-conv`** — Optional: EMF → SVG conversion (required for EMF content)
+- **`inkscape`** — Optional: fit canvas to drawing after EMF or SVG paste
 
 Only the tools relevant to your environment are needed. In WSL, `powershell.exe` is always available and is the primary clipboard backend.
 
-### Installing emf2svg-conv (WSL/Ubuntu)
-
 ```bash
-sudo apt install libemf2svg-dev
-```
-
-Or build from source: [github.com/kakwa/libemf2svg](https://github.com/kakwa/libemf2svg)
-
-### Installing optional tools
-
-```bash
-sudo apt install inkscape        # optional canvas fitting
 sudo apt install wl-clipboard    # Wayland clipboard
 sudo apt install xclip           # X11 clipboard
+
+sudo apt install inkscape        # optional: canvas fitting
+sudo apt install libemf2svg-dev  # optional: handles EMF
 ```
 
 ## Installation
@@ -53,7 +41,7 @@ sudo apt install xclip           # X11 clipboard
 Or from the terminal:
 
 ```bash
-code --install-extension pastevector-0.2.0.vsix
+code --install-extension pastevector-0.2.1.vsix
 ```
 
 ### Build from source
@@ -85,27 +73,67 @@ If the clipboard contains plain text or the file is not Markdown, the command fa
 
 ## Settings
 
-| Setting | Default | Description |
-| ------- | ------- | ----------- |
-| `pasteVector.destinationTemplate` | `img_${documentBaseName}_${unixTime}.${fileExtName}` | Output filename template. Variables: `documentBaseName`, `unixTime`, `fileExtName` |
-| `pasteVector.preferBackend` | `auto` | Linux clipboard backend: `auto`, `wayland`, or `x11` |
-| `pasteVector.altText` | `""` | Alt text for the inserted Markdown image link |
-| `pasteVector.showLog` | `false` | Show the pasteVector output channel while the command runs |
-| `pasteVector.copyMarkdownToClipboard` | `false` | Also copy the inserted Markdown image link to the clipboard |
-| `pasteVector.finalizeSvgWithInkscape` | `true` | Run Inkscape on SVG text pastes to fit the canvas and export as plain SVG |
-| `pasteVector.emfScalePercent` | `125` | EMF DPI scale factor. SVG output is multiplied by `100/emfScalePercent`. Set to `100` to disable. Applies on all platforms. |
-| `pasteVector.finalizeEmfWithInkscape` | `true` | After EMF conversion, run Inkscape to fit the canvas to the drawing (including stroke widths) and export as plain SVG. Adds ~1–3 s per paste. No effect if Inkscape is not in PATH. |
+- **`pasteVector.destinationTemplate`** (default: `img_${documentBaseName}_${unixTime}.${fileExtName}`)
+  
+  Output filename template. Available variables: `documentBaseName`, `unixTime`, `fileExtName`.
+
+---
+
+- **`pasteVector.preferBackend`** (default: `auto`)
+  
+  Linux clipboard backend: `auto`, `wayland`, or `x11`.
+
+---
+
+- **`pasteVector.altText`** (default: `""`)
+  
+  Alt text for the inserted Markdown image link.
+
+---
+
+- **`pasteVector.showLog`** (default: `false`)
+  
+  Show the pasteVector output channel while the command runs.
+
+---
+
+- **`pasteVector.copyMarkdownToClipboard`** (default: `false`)
+  
+  Also copy the inserted Markdown image link to the clipboard.
+
+---
+
+- **`pasteVector.finalizeSvgWithInkscape`** (default: `true`)
+  
+  After an SVG paste, run Inkscape to fit the canvas to the drawing and export as plain SVG. Adds ~1–3 s per paste. No effect if Inkscape is not in PATH.
+
+---
+
+- **`pasteVector.emfScalePercent`** (default: `125`)
+  
+  EMF DPI scale factor. SVG output dimensions are multiplied by `100/emfScalePercent`. Set to `100` to disable. Applies on all platforms.
+
+---
+
+- **`pasteVector.finalizeEmfWithInkscape`** (default: `true`)
+  
+  After an EMF paste, run Inkscape to fit the canvas to the drawing and export as plain SVG. Adds ~1–3 s per paste. No effect if Inkscape is not in PATH.
 
 ## Troubleshooting
 
-**Nothing happens on `Ctrl+Alt+V`**
-Run `pasteVector: Show Clipboard Types` from the Command Palette to see what formats are on the clipboard. Enable `pasteVector.showLog` for detailed output in the Output panel.
+- **Nothing happens on `Ctrl+Alt+V`**
+    
+    Run `pasteVector: Show Clipboard Types` from the Command Palette to see what formats are on the clipboard. Enable `pasteVector.showLog` for detailed output in the Output panel.
 
-**EMF conversion fails**
-Make sure `emf2svg-conv` is installed and on your PATH: `emf2svg-conv --version`. In WSL, `which emf2svg-conv` should return a result.
+---
 
-**Image is the wrong size**
-Adjust `pasteVector.emfScalePercent` to match your display scaling. At 125% Windows display scaling the default value of `125` is correct. Set to `100` to disable scaling correction entirely.
+- **EMF conversion fails**
+    
+    Make sure `emf2svg-conv` is installed and on your PATH: `emf2svg-conv --version`. In WSL, `which emf2svg-conv` should return a result.
 
-**Image is clipped at the edges**
-Disable `pasteVector.finalizeEmfWithInkscape` to skip the Inkscape pass after EMF conversion. Requires `inkscape` in PATH for the pass to have any effect.
+---
+
+- **EMF image is the wrong size**
+    
+    Adjust `pasteVector.emfScalePercent` to match your display scaling. At 125% Windows display scaling the default value of `125` is correct. Set to `100` to disable scaling correction entirely.
+
