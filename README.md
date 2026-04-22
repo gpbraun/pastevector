@@ -77,43 +77,29 @@ If the clipboard contains plain text or the file is not Markdown, the command fa
   
   Output filename template. Available variables: `documentBaseName`, `unixTime`, `fileExtName`.
 
----
-
 - **`pasteVector.preferBackend`** (default: `auto`)
   
   Linux clipboard backend: `auto`, `wayland`, or `x11`.
-
----
 
 - **`pasteVector.altText`** (default: `""`)
   
   Alt text for the inserted Markdown image link.
 
----
-
 - **`pasteVector.showLog`** (default: `false`)
   
   Show the pasteVector output channel while the command runs.
-
----
 
 - **`pasteVector.copyMarkdownToClipboard`** (default: `false`)
   
   Also copy the inserted Markdown image link to the clipboard.
 
----
-
 - **`pasteVector.finalizeSvgWithInkscape`** (default: `true`)
   
   After an SVG paste, run Inkscape to fit the canvas to the drawing and export as plain SVG. Adds ~1–3 s per paste. No effect if Inkscape is not in PATH.
 
----
-
 - **`pasteVector.emfScalePercent`** (default: `125`)
   
   EMF DPI scale factor. SVG output dimensions are multiplied by `100/emfScalePercent`. Set to `100` to disable. Applies on all platforms.
-
----
 
 - **`pasteVector.finalizeEmfWithInkscape`** (default: `true`)
   
@@ -125,13 +111,9 @@ If the clipboard contains plain text or the file is not Markdown, the command fa
     
     Run `pasteVector: Show Clipboard Types` from the Command Palette to see what formats are on the clipboard. Enable `pasteVector.showLog` for detailed output in the Output panel.
 
----
-
 - **EMF conversion fails**
     
     Make sure `emf2svg-conv` is installed and on your PATH: `emf2svg-conv --version`. In WSL, `which emf2svg-conv` should return a result.
-
----
 
 - **EMF image is the wrong size**
     
